@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private Sensor gravity;
+    private Sensor gyroscope;
     public Vibrator v;
     private TextView chopDisplay;
     private float vibrateThreshold = 2;
@@ -36,6 +37,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float gravityX = 0;
     private float gravityY = 0;
     private float gravityZ = 0;
+
+    private float gyroX = 0;
+    private float gyroY = 0;
+    private float gyroZ = 0;
 
     private float deltaX = 0;
     private float deltaY = 0;
@@ -50,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private TextView currentX, currentY, currentZ;
     private TextView gravityXview, gravityYview, gravityZview;
+    private TextView gyroXview, gyroYview, gyroZview;
     private ImageView upArrow, downArrow, leftArrow, rightArrow, forwardArrow, backArrow;
     private Button masterStart, masterStop, exportButton, clearButton;
 
@@ -60,10 +66,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION) != null
+                && sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null
                 && sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY) != null) {
             // success! we have sensors!
 
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
             gravity = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             sensorManager.registerListener(this, gravity, SensorManager.SENSOR_DELAY_NORMAL);
@@ -100,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 masterStart.setEnabled(false);
                 masterRecord = true;
                 recording = true;
-                values.clear();
+                //values.clear();
             }
         });
 
@@ -123,9 +131,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 String filename = System.currentTimeMillis()+".csv";
                 try {
                     FileWriter fw = new FileWriter(new File(getExternalFilesDir(null), filename));
-
+                    fw.append("Accelerometer X, Accelerometer Y, Accelerometer Z, Gravity X, Gravity Y, Gravity Z, Gyro X, Gyro Y, Gyro Z\n");
                     for(int i = 0; i < values.size(); i++) {
-                        fw.append(values.get(i)[0]+","+values.get(i)[1]+","+values.get(i)[2]+"\n");
+                        fw.append(values.get(i)[0]+","+values.get(i)[1]+","+values.get(i)[2]+",");
+                        fw.append(values.get(i)[3]+","+values.get(i)[4]+","+values.get(i)[5]+",");
+                        fw.append(values.get(i)[6]+","+values.get(i)[7]+","+values.get(i)[8]+"\n");
                     }
                     fw.close();
                 } catch (IOException e) {
@@ -182,6 +192,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             gravityXview.setText(Float.toString(gravityX));
             gravityYview.setText(Float.toString(gravityY));
             gravityZview.setText(Float.toString(gravityZ));
+        } else if (event.sensor == gyroscope) {
+            gyroX = event.values[0];
+            gyroY = event.values[1];
+            gyroZ = event.values[2];
+
+            gyroXview.setText(Float.toString(gyroX));
+            gyroYview.setText(Float.toString(gyroY));
+            gyroZview.setText(Float.toString(gyroZ));
         } else {
             // clean current values
             displayCleanValues();
@@ -222,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 back = false;
             }
 
-            if (!masterRecord) {
+            if (!masterRecord && false) {
                 if (deltaX == 0 && deltaY == 0 && deltaZ == 0) {
                     if (recording) { //stopRecording
                         recording = false;
@@ -238,7 +256,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
 
             if (recording) {
-                values.add(new float[]{event.values[0] - gravityX, lastY = event.values[1] - gravityY, lastZ = event.values[2] - gravityZ});
+                values.add(new float[]{event.values[0] - gravityX, lastY = event.values[1] - gravityY, lastZ = event.values[2] - gravityZ,
+                                       gravityX, gravityY, gravityZ,
+                                       gyroX, gyroY, gyroZ});
             }
 
             if (deltaX > vibrateThreshold) {
