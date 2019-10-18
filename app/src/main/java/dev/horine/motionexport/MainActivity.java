@@ -1,6 +1,7 @@
 package dev.horine.motionexport;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
 import android.content.Context;
 import android.content.Intent;
@@ -177,9 +178,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         viewButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 File file = new File(getExternalFilesDir(null)+"/" + filename);
-                Intent i = new Intent(Intent.ACTION_VIEW);
-                i.setData(Uri.parse("file://"+file.getAbsolutePath()));
-                startActivity(i);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Uri uri = FileProvider.getUriForFile(MainActivity.this,
+                        BuildConfig.APPLICATION_ID + ".fileprovider",file);
+                intent.setData(uri);
+                startActivity(intent);
             }
         });
 
