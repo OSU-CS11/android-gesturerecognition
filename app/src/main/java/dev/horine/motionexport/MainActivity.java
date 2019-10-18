@@ -1,12 +1,14 @@
-package dev.horine.gesturerecognition;
+package dev.horine.motionexport;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.view.View;
@@ -52,12 +54,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     boolean recording = false;
     boolean masterRecord = false;
     Vector<float[]> values = new Vector<float[]>();
+    private String filename;
 
     private TextView currentX, currentY, currentZ;
     private TextView gravityXview, gravityYview, gravityZview;
     private TextView gyroXview, gyroYview, gyroZview;
     private ImageView upArrow, downArrow, leftArrow, rightArrow, forwardArrow, backArrow;
-    private Button masterStart, masterStop, exportButton, clearButton;
+    private Button masterStart, masterStop, exportButton, clearButton, viewButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,10 +74,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // success! we have sensors!
 
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-            gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+            gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
             gravity = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             sensorManager.registerListener(this, gravity, SensorManager.SENSOR_DELAY_NORMAL);
+            sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
             vibrateThreshold = accelerometer.getMaximumRange()/2;
             v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
         } else {
@@ -91,6 +95,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         gravityXview = findViewById(R.id.gravityX);
         gravityYview = findViewById(R.id.gravityY);
         gravityZview = findViewById(R.id.gravityZ);
+
+        gyroXview = findViewById(R.id.gyroX);
+        gyroYview = findViewById(R.id.gyroY);
+        gyroZview = findViewById(R.id.gyroZ);
 
         leftArrow = findViewById(R.id.leftArrow);
         rightArrow = findViewById(R.id.rightArrow);
@@ -128,20 +136,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         exportButton = findViewById(R.id.exportButton);
         exportButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                String filename = System.currentTimeMillis()+".csv";
+                filename = System.currentTimeMillis()+".csv";
                 try {
                     FileWriter fw = new FileWriter(new File(getExternalFilesDir(null), filename));
                     fw.append("Accelerometer X, Accelerometer Y, Accelerometer Z, Gravity X, Gravity Y, Gravity Z, Gyro X, Gyro Y, Gyro Z\n");
                     for(int i = 0; i < values.size(); i++) {
+                        System.out.println(values.get(i).length);
                         fw.append(values.get(i)[0]+","+values.get(i)[1]+","+values.get(i)[2]+",");
-                        fw.append(values.get(i)[3]+","+values.get(i)[4]+","+values.get(i)[5]+",");
-                        fw.append(values.get(i)[6]+","+values.get(i)[7]+","+values.get(i)[8]+"\n");
+                        if (values.get(i).length >= 9) {
+                            fw.append(values.get(i)[3] + "," + values.get(i)[4] + "," + values.get(i)[5] + ",");
+                            fw.append(values.get(i)[6] + "," + values.get(i)[7] + "," + values.get(i)[8] + "\n");
+                        } else {
+                            fw.append("\n");
+                        }
                     }
                     fw.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                android.widget.Toast.makeText(getApplicationContext(),"dev.horine.gesturerecognition/files/" + filename,Toast.LENGTH_LONG).show();
+                android.widget.Toast.makeText(getApplicationContext(),"dev.horine.motionexport/files/" + filename,Toast.LENGTH_LONG).show();
                 values.clear();
                 exportButton.setEnabled(false);
                 clearButton.setEnabled(true);
@@ -160,6 +173,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 clearButton.setEnabled(false);
             }
         });
+        viewButton = findViewById(R.id.viewData);
+        viewButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                File file = new File(getExternalFilesDir(null)+"/" + filename);
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setData(Uri.parse("file://"+file.getAbsolutePath()));
+                startActivity(i);
+            }
+        });
 
 
     }
@@ -168,6 +190,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onResume();
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this, gravity, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     //onPause() unregister the accelerometer for stop listening the events
@@ -259,6 +282,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 values.add(new float[]{event.values[0] - gravityX, lastY = event.values[1] - gravityY, lastZ = event.values[2] - gravityZ,
                                        gravityX, gravityY, gravityZ,
                                        gyroX, gyroY, gyroZ});
+                System.out.println(values.firstElement().length);
             }
 
             if (deltaX > vibrateThreshold) {
@@ -303,9 +327,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     // display the current x,y,z accelerometer values
     public void displayCurrentValues() {
-        currentX.setText(Float.toString(deltaX));
-        currentY.setText(Float.toString(deltaY));
-        currentZ.setText(Float.toString(deltaZ));
+        currentX.setText(Float.toString(lastX));
+        currentY.setText(Float.toString(lastY));
+        currentZ.setText(Float.toString(lastZ));
 
 
         if (left) {leftArrow.setVisibility(View.VISIBLE);}

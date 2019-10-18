@@ -1,4 +1,4 @@
-package dev.horine.gesturerecognition;
+package dev.horine.motionexport;
 
 import android.content.Context;
 
